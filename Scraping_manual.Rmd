@@ -1,0 +1,396 @@
+---
+title: "<h2>Data Harvesting - Final project </h2>"
+output: html_document
+---
+
+```{=html}
+<style>
+body {
+text-align: justify}
+</style>
+```
+\
+
+### Scraping the Stock Market indexes across Europe
+
+This script contains a step-by-step explanation of the scrapping and cleaning process. First, a summary of the main World Indexes are obtained from from [Yahoo Finance](https://es.finance.yahoo.com/). Subsequently, the components of 6 European Stock Markets are scrapped from [Investing](https://www.investing.com/), in particular, IBEX-35 for Spain, DAX for Germany, CAC for France, FTSE for United Kingdom, ATX for Austria, and BFX for Belgium.
+
+\
+
+**Libraries**
+
+```{r warning=FALSE, message=FALSE}
+
+library(scrapex)
+library(rvest)
+library(httr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(tools)
+library(taskscheduleR)
+library(stringr)
+library(readr)
+library(readxl)
+
+timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S") 
+```
+
+\
+\
+
+### **1. World Indexes**
+
+-   **Scrap the data**
+
+The first step is to extract and retain only the table containing a summary with the World Indexes.
+
+```{r warning=FALSE, message=FALSE}
+
+link_index <- "https://es.finance.yahoo.com/world-indices/"
+#browseURL(prep_browser(link_index))
+
+index <- read_html(link_index)
+
+
+all_tables <- index %>%
+  html_nodes("table") %>%
+  html_table() %>% 
+  print()
+
+index_table <-  all_tables[[1]] %>% 
+  print()
+
+```
+
+\
+
+-   **Data cleaning**
+
+Analyzing the data, we notice that many columns contain just missing values. To remove these empty columns, we'll keep just those columns containing character data. Subsequently, we observe that the first column, corresponding to the index symbol, is prefixed with the character "\^". Therefore, we will replace every "\^" with an empty space. Additionally, we include a new column with the current time of the execution, as this table does not provide that information.
+
+```{r warning=FALSE, message=FALSE}
+
+index_table <-  index_table %>% select_if(is.character) 
+
+index_table <-
+ index_table %>%
+  mutate(
+    Símbolo = str_replace_all(string = Símbolo, pattern = "\\^", replacement = ""),
+    Date = timestamp <- format(Sys.time(), "%H:%M")) %>% 
+  print()
+```
+
+\
+
+Additionally, since later on we will be saving the data into CSV files, we decide to omit the accents in the words, to avoid misunderstandings (such as SÃ­mbolo for Símbolo or Ãšltimo for Último). Moreover, for the same reason, we will remove spaces in the names of the columns and replace them for "\_". After all these steps, we obtain a more understandable table containing the main world indexes.
+
+```{r warning=FALSE, message=FALSE}
+column_names <- colnames(index_table)
+column_names <- str_replace_all(column_names, pattern = "[íÍ]", replacement = "i")
+column_names <- str_replace_all(column_names, pattern = "[úÚ]", replacement = "U")
+column_names <- str_replace_all(column_names, pattern = " ", replacement = "_")
+colnames(index_table) <- column_names
+
+print(index_table)
+
+```
+
+\
+
+### **2. European Stock Markets**
+
+In this section, a similar procedure is followed for every stock market. The first step is to scrap the indexes for each of the companies composing the corresponding Stock Market by reading each of the links and selecting the components data. To do so, we first read all the tables of the website and consequently, choose the specific table we are interested in. Then, transformations and regular expressions are applied to the previous scrapped tables to facilitate its use. In this context, we incorporate a new column to specify the country of each index and select only the columns with data of interest by removing those containing just missing values . Additionally, we remove tildes and spaces in the column names to avoid symbols misinterpretations when working with the CSV files. Lastly, each dataframe is saved to a separate CSV file, where the name of the index and the current time and date of the execution is specified.
+
+\
+
+#### 2.1 IBEX-35 - Spain
+
+-   **Scrap the data**
+
+```{r warning=FALSE, message=FALSE}
+link_ibex <- "https://es.investing.com/indices/spain-35-components"
+browseURL(link_index)
+
+ibex <- read_html(link_ibex)
+
+all_tables <-  ibex %>%  
+  html_table() %>% 
+  print()      
+
+table_ibex <- all_tables %>% 
+  .[[2]] %>%
+  print()
+```
+
+\
+
+-   **Data cleaning**
+
+```{r warning=FALSE, message=FALSE}
+
+
+table_ibex <- table_ibex  %>%  
+  select(c(2:9)) %>% 
+  mutate(country = "Spain") %>% 
+  print()
+
+column_names <- colnames(table_ibex)
+column_names <- str_replace_all(column_names, pattern = "[áÁ]", replacement = "a")
+column_names <- str_replace_all(column_names, pattern = "[éÉ]", replacement = "e")
+column_names <- str_replace_all(column_names, pattern = "[íÍ]", replacement = "i")
+column_names <- str_replace_all(column_names, pattern = "[óÓ]", replacement = "o")
+column_names <- str_replace_all(column_names, pattern = "[úÚ]", replacement = "u")
+column_names <- str_replace_all(column_names, pattern = " ", replacement = "_")
+colnames(table_ibex) <- column_names
+
+print(table_ibex)
+
+
+```
+
+\
+\
+
+#### 2.2 DAX - Germany
+
+-   **Scrap the data**
+
+```{r warning=FALSE, message=FALSE}
+link_dax <- "https://es.investing.com/indices/germany-30-components"
+dax <- read_html(link_dax)
+all_tables_dax <- dax %>%  
+  html_table() %>% 
+  print() 
+table_dax<- all_tables_dax %>% 
+  .[[2]] %>%
+  print()
+
+
+```
+
+\
+\
+
+-   **Data cleaning**
+
+```{r}
+
+
+table_dax<-table_dax %>%  
+  select(c(2:9)) %>% 
+  mutate(country="Germany")
+
+column_names <- colnames(table_dax)
+column_names <- str_replace_all(column_names, pattern = "[áÁ]", replacement = "a")
+column_names <- str_replace_all(column_names, pattern = "[éÉ]", replacement = "e")
+column_names <- str_replace_all(column_names, pattern = "[íÍ]", replacement = "i")
+column_names <- str_replace_all(column_names, pattern = "[óÓ]", replacement = "o")
+column_names <- str_replace_all(column_names, pattern = "[úÚ]", replacement = "u")
+column_names <- str_replace_all(column_names, pattern = " ", replacement = "_")
+colnames(table_dax) <- column_names
+
+
+
+```
+
+\
+
+#### 2.3 CAC - France
+
+-   **Scrap the data**
+
+```{r warning=FALSE, message=FALSE}
+
+link_cac <- "https://es.investing.com/indices/france-40-components"
+cac <- read_html(link_cac)
+
+all_tables_cac <- cac %>%  
+  html_table() %>% 
+  print() 
+table_cac<- all_tables_cac %>% 
+  .[[2]] %>%
+  print()
+
+```
+
+\
+
+-   **Data cleaning**
+
+```{r}
+
+table_cac<-table_cac  %>%  
+  select(c(2:9)) %>% 
+  mutate(country="France")
+
+column_names <- colnames(table_cac)
+column_names <- str_replace_all(column_names, pattern = "[áÁ]", replacement = "a")
+column_names <- str_replace_all(column_names, pattern = "[éÉ]", replacement = "e")
+column_names <- str_replace_all(column_names, pattern = "[íÍ]", replacement = "i")
+column_names <- str_replace_all(column_names, pattern = "[óÓ]", replacement = "o")
+column_names <- str_replace_all(column_names, pattern = "[úÚ]", replacement = "u")
+column_names <- str_replace_all(column_names, pattern = " ", replacement = "_")
+colnames(table_cac) <- column_names
+
+
+table_cac
+
+```
+
+\
+
+#### 2.4 FTSE - United Kingdom
+
+-   **Scrap the data**
+
+```{r warning=FALSE, message=FALSE}
+
+link_ftse <- "https://es.investing.com/indices/investing.com-uk-100-components"
+ftse <- read_html(link_ftse)
+
+all_tables_ftse <- ftse %>%  
+  html_table() %>% 
+  print() 
+
+table_ftse<- all_tables_ftse %>% 
+  .[[1]] %>%
+  print()
+
+
+
+```
+
+\
+
+-   **Data cleaning**
+
+```{r}
+
+table_ftse<-table_ftse %>% 
+  select(c(2:9)) %>% 
+  mutate(country="United Kingdom")
+
+column_names <- colnames(table_ftse)
+column_names <- str_replace_all(column_names, pattern = "[áÁ]", replacement = "a")
+column_names <- str_replace_all(column_names, pattern = "[éÉ]", replacement = "e")
+column_names <- str_replace_all(column_names, pattern = "[íÍ]", replacement = "i")
+column_names <- str_replace_all(column_names, pattern = "[óÓ]", replacement = "o")
+column_names <- str_replace_all(column_names, pattern = "[úÚ]", replacement = "u")
+column_names <- str_replace_all(column_names, pattern = " ", replacement = "_")
+colnames(table_ftse) <- column_names
+
+
+table_ftse
+
+```
+
+\
+
+#### 2.5 ATX - Austria
+
+-   **Scrap the data**
+
+```{r warning=FALSE, message=FALSE}
+
+
+link_atx <- "https://es.investing.com/indices/atx-components"
+atx<- read_html(link_atx)
+
+all_tables_atx <- atx %>%  
+  html_table() %>%
+  print()
+
+table_atx <- all_tables_atx %>%
+  .[[1]] %>%
+  print()
+
+
+```
+
+\
+
+-   **Data cleaning**
+
+```{r}
+table_atx <- table_atx  %>% 
+  select(c(2:9))  %>% 
+  mutate(country="Austria")
+
+
+column_names <- colnames(table_atx)
+column_names <- str_replace_all(column_names, pattern = "[áÁ]", replacement = "a")
+column_names <- str_replace_all(column_names, pattern = "[éÉ]", replacement = "e")
+column_names <- str_replace_all(column_names, pattern = "[íÍ]", replacement = "i")
+column_names <- str_replace_all(column_names, pattern = "[óÓ]", replacement = "o")
+column_names <- str_replace_all(column_names, pattern = "[úÚ]", replacement = "u")
+column_names <- str_replace_all(column_names, pattern = " ", replacement = "_")
+colnames(table_atx) <- column_names
+
+table_atx
+
+
+```
+
+\
+
+#### 2.6 BFX - Belgium
+
+-   **Scrap the data**
+
+```{r warning=FALSE, message=FALSE}
+
+link_bel<- "https://es.investing.com/indices/bel-20-components"
+bel<- read_html(link_bel)
+
+all_tables_bel <-bel %>%  
+  html_table() %>% 
+  print() 
+
+table_bel<- all_tables_bel %>% 
+  .[[2]] %>%
+  print()
+
+
+```
+
+\
+
+-   **Data cleaning**
+
+```{r}
+
+table_bel <- table_bel %>% 
+  select(c(2:9)) %>%  
+  mutate(country="Belgium")
+
+column_names <- colnames(table_bel)
+column_names <- str_replace_all(column_names, pattern = "[áÁ]", replacement = "a")
+column_names <- str_replace_all(column_names, pattern = "[éÉ]", replacement = "e")
+column_names <- str_replace_all(column_names, pattern = "[íÍ]", replacement = "i")
+column_names <- str_replace_all(column_names, pattern = "[óÓ]", replacement = "o")
+column_names <- str_replace_all(column_names, pattern = "[úÚ]", replacement = "u")
+column_names <- str_replace_all(column_names, pattern = " ", replacement = "_")
+colnames(table_bel) <- column_names
+
+table_bel
+
+```
+
+### 3. Saving the files in your working directory
+
+**WARNING**: Make sure you do NOT change the last part of the path "/world_index". Each index has an specific name that cannot be modified, otherwise, the generated CSV files will be overwritten in each execution.
+
+```{r}
+
+write.csv(index_table, paste0("C:/Users/aleco/OneDrive/Documentos/Master CSS/Data Harvesting/Data/world_index", timestamp, ".csv"), row.names = FALSE)
+write.csv(table_ibex, paste0("C:/Users/aleco/OneDrive/Documentos/Master CSS/Data Harvesting/Data/ibex__", timestamp, ".csv"), row.names = FALSE)
+
+write.csv(table_dax, paste0("C:/Users/aleco/OneDrive/Documentos/Master CSS/Data Harvesting/Data/dax_", timestamp, ".csv"), row.names = FALSE)
+write.csv(table_cac, paste0("C:/Users/aleco/OneDrive/Documentos/Master CSS/Data Harvesting/Data/cac_", timestamp, ".csv"), row.names = FALSE)
+
+write.csv(table_ftse, paste0("C:/Users/aleco/OneDrive/Documentos/Master CSS/Data Harvesting/Data/ftse_", timestamp, ".csv"), row.names = FALSE)
+write.csv(table_atx, paste0("C:/Users/aleco/OneDrive/Documentos/Master CSS/Data Harvesting/Data/atx_", timestamp, ".csv"), row.names = FALSE)
+write.csv(table_bel, paste0("C:/Users/aleco/OneDrive/Documentos/Master CSS/Data Harvesting/Data/bel_", timestamp, ".csv"), row.names = FALSE)
+```

@@ -1,0 +1,504 @@
+---
+title: "<h2>Data Harvesting - Final project: Visualization </h2>"
+output: html_document
+---
+
+```{=html}
+<style>
+body {
+text-align: justify}
+</style>
+```
+\
+
+### Visualization of the scraped Stock Market indexes
+
+This script contains charts and visualization generated using the scraped data of the stock Market indexes obtained from [Yahoo Finance](https://es.finance.yahoo.com/) and [Investing](https://www.investing.com/). It demonstrates how the scraped data can be used to facilitate the visualization of the indexes extracted from the websites, showing the evolution of the stock market over the day.\
+
+**Libraries**
+
+```{r warning=FALSE, message=FALSE}
+
+
+library(rmarkdown)
+library(knitr)
+library(scrapex)
+library(rvest)
+library(httr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(tools)
+library(taskscheduleR)
+library(stringr)
+library(readr)
+library(ggpubr)
+library(ggrepel)
+
+```
+
+\
+
+### 1. World Index
+
+#### Read scraped data stored in the generated CSV files:
+
+```{r warning=FALSE, message=FALSE}
+
+
+csv_world <- list.files(pattern = "^world.*\\.csv$", full.names = TRUE)
+
+list_world <- lapply(csv_world, read_csv) 
+
+data_world<- do.call(rbind, list_world)
+data_world <- data_world %>% 
+  mutate(Date = substr(Date, 1, 5))
+
+```
+
+\
+
+#### **European Index Evolution:**
+
+```{r, echo=TRUE,warning=FALSE, message=FALSE, fig.align='center', fig.width=10, fig.height=6, collapse=TRUE}
+
+colors <- c("IBEX" = "seagreen2", "GDAXI" = "coral", "FCHI" = "mediumblue", "ATX" = "magenta1", "FTSE" = "yellow1", "BFX" = "deeppink")
+european_stock <- data_world |> 
+  filter(Simbolo %in% c("IBEX", "GDAXI", "FCHI","ATX", "FTSE", "BFX")) 
+
+
+
+limits_df <- european_stock %>%
+  group_by(Simbolo) %>%
+  summarize(ymin = min(Ultimo_precio),
+            ymax = max(Ultimo_precio))
+
+european_stock <- merge(european_stock, limits_df, by = "Simbolo")
+
+plot <- ggplot(european_stock, aes(x = Date, y = Ultimo_precio, color = Simbolo, group = Simbolo)) +
+  geom_point(size = 2) +   
+  geom_line(size = 1, aes(color = Simbolo))  + 
+  facet_wrap(~ Simbolo, scales = "free_y") +
+  geom_text_repel(aes(label = round(Ultimo_precio, 2)), size = 3, vjust = -2.2, segment.size = 0, segment.color = NA) +
+  labs(x = NULL, y = "Last Price", title = "European Index Evolution") +
+  theme(
+    panel.background = element_rect(fill = "black"),
+    plot.background = element_rect(fill = "black"),
+    plot.title = element_text(color = "white", margin = margin(b = 30)),  # Move the title upwards
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(color = "white", angle = 45, hjust = 1, size = 6),  
+    axis.text.y = element_text(color = "white",  hjust = 1),
+    axis.title.y = element_text(color = "white", size = 8, margin = margin(r = 12)),  # Move the y-axis title to the left
+    strip.background = element_blank(),  
+    strip.text.x = element_text(size = 9, color = "white", face = "bold"),
+    plot.margin = margin(10, 18, 10, 15)) +  #top, right, bottom, left
+  geom_blank(aes(y = ymin, ymax = ymax)) + 
+  guides(color = FALSE, fill = FALSE) +
+  scale_color_manual(values = colors) 
+
+
+print(plot)
+
+
+```
+
+\
+
+#### Iterative European stock market evolution
+
+```{r, echo=TRUE,warning=FALSE, message=FALSE, fig.align='center', fig.width=10, fig.height=6, collapse=TRUE}
+
+library(plotly)
+
+ggplotly(plot, tooltip=c("Ultimo_precio"))
+
+```
+
+\
+
+-   **IBEX-35 Index plot**
+
+```{r, echo=TRUE,warning=FALSE, message=FALSE, fig.align='center', fig.width=10, fig.height=6, collapse=TRUE}
+
+
+g_es <-
+data_world %>%
+  filter(Simbolo == "IBEX") %>% 
+  ggplot(aes(x = Date, y = Ultimo_precio, color = Simbolo, group = Simbolo)) +
+  geom_point(size = 2) +   # Add points
+  geom_line(size = 1,color = "seagreen2") +
+  labs( x=NULL,y="Last Price", title="IBEX 35 INDEX EVOLUTION") +
+  theme(panel.background = element_rect(fill = "black"),
+        plot.background = element_rect(fill = "black"),
+        plot.title = element_text(color = "white"),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+       panel.grid.major.x = element_blank(),
+       panel.grid.minor.x = element_blank(),
+       axis.text = element_text(color = "white"),   
+      axis.title = element_text(color = "white")) +
+  scale_color_manual(values = c("IBEX" = "seagreen2")) +
+  guides(color=FALSE, fill=FALSE) 
+  
+
+ggplotly(g_es, tooltip=c("Ultimo_precio"))
+
+
+```
+
+\
+
+-   **DAX Index plot**
+
+```{r, echo=TRUE,warning=FALSE, message=FALSE, fig.align='center', fig.width=10, fig.height=6, collapse=TRUE}
+
+
+g_al<-
+data_world |> 
+  filter(Simbolo == "GDAXI") |> 
+  ggplot(aes(x = Date, y = Ultimo_precio, color = Simbolo, group = Simbolo)) +
+  geom_point(size = 2) +   
+  geom_line(size = 1,color = "coral") +
+  labs(x=NULL,y="Last Price", title="DAX INDEX EVOLUTION") +
+  theme(panel.background = element_rect(fill = "black"),
+        plot.background = element_rect(fill = "black"),
+        plot.title = element_text(color = "white"),
+        panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text = element_text(color = "white"),   
+        axis.title = element_text(color = "white")) +
+  scale_color_manual(values = c("GDAXI" = "coral")) +
+  guides(color=FALSE, fill=FALSE)
+
+
+ggplotly(g_al, tooltip=c("Ultimo_precio"))
+```
+
+\
+
+-   **CAC40 Index plot**
+
+```{r, echo=TRUE,warning=FALSE, message=FALSE, fig.align='center', fig.width=10, fig.height=6, collapse=TRUE}
+
+g_fr <-data_world |> 
+  filter(Simbolo == "FCHI") |> 
+  ggplot(aes(x = Date, y = Ultimo_precio, color = Simbolo, group = Simbolo)) +
+  geom_point(size = 2) +   
+  geom_line(size = 1,color = "mediumblue")  +
+  labs(x=NULL,y="Last Price", title="CAC 40 INDEX EVOLUTION") +
+  theme(panel.background = element_rect(fill = "black"),
+        plot.background = element_rect(fill = "black"),
+        plot.title = element_text(color = "white"),
+        panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text = element_text(color = "white"),   
+        axis.title = element_text(color = "white")) +
+  scale_color_manual(values = c("FCHI" = "mediumblue")) +
+  guides(color=FALSE, fill=FALSE)
+
+ggplotly(g_fr, tooltip=c("Ultimo_precio"))
+
+```
+
+\
+
+-   **FTSE 100 Index plot**
+
+```{r, echo=TRUE,warning=FALSE, message=FALSE, fig.align='center', fig.width=10, fig.height=6, collapse=TRUE}
+
+g_uk<-data_world |> 
+  filter(Simbolo == "FTSE") |> 
+  ggplot(aes(x = Date, y = Ultimo_precio, color = Simbolo, group = Simbolo)) +
+  geom_point(size = 2) +   
+  geom_line(size = 1,color = "magenta1") +
+  labs(x=NULL,y="Last Price", title="FTSE 100 INDEX EVOLUTION") +
+  theme(panel.background = element_rect(fill = "black"),
+        plot.background = element_rect(fill = "black"),
+        plot.title = element_text(color = "white"),
+        panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text = element_text(color = "white"),   
+        axis.title = element_text(color = "white")) +
+  scale_color_manual(values = c("FTSE" = "magenta1")) +
+  guides(color=FALSE, fill=FALSE)
+
+ggplotly(g_uk, tooltip=c("Ultimo_precio"))
+```
+
+\
+
+-   **ATX Index plot**
+
+```{r, echo=TRUE,warning=FALSE, message=FALSE, fig.align='center', fig.width=10, fig.height=6, collapse=TRUE}
+
+
+g_aus <- data_world |> 
+  filter(Simbolo == "ATX") |> 
+  ggplot(aes(x = Date, y = Ultimo_precio, color = Simbolo, group = Simbolo)) +
+  geom_point(size = 2, color = "yellow1") +   
+  geom_line(size = 1,color = "yellow1")  + 
+  labs(x=NULL,y="Last Price", title="ATX INDEX EVOLUTION") +
+  theme(panel.background = element_rect(fill = "black"),
+        plot.background = element_rect(fill = "black"),
+        plot.title = element_text(color = "white"),
+        panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text = element_text(color = "white"),   
+        axis.title = element_text(color = "white")) +
+  scale_color_manual(values = c("FTSE" = "yellow1")) +
+  guides(color=FALSE, fill=FALSE)
+
+
+ggplotly(g_aus, tooltip=c("Ultimo_precio"))
+
+```
+
+\
+
+-   **BEL20 Index plot**
+
+```{r, echo=TRUE,warning=FALSE, message=FALSE, fig.align='center', fig.width=10, fig.height=6, collapse=TRUE}
+
+
+g_bel <- data_world |> 
+  filter(Simbolo == "BFX") |> 
+  ggplot(aes(x = Date, y = Ultimo_precio, color = Simbolo, group = Simbolo)) +
+  geom_point(size = 2) +   
+  geom_line(size = 1,color = "deeppink")+
+  labs(x=NULL,y="Last Price", title="BFX INDEX EVOLUTION") +
+  theme(panel.background = element_rect(fill = "black"),
+        plot.background = element_rect(fill = "black"),
+        plot.title = element_text(color = "white"),
+        panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text = element_text(color = "white"),   
+        axis.title = element_text(color = "white")) +
+  scale_color_manual(values = c("BFX" = "deeppink")) +
+  guides(color=FALSE, fill=FALSE)
+
+ggplotly(g_bel, tooltip=c("Ultimo_precio"))
+```
+
+\
+
+### 2. IBEX-35
+
+-   Read scraped data stored in the generated CSV files:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE, collapse=TRUE}
+
+
+csv_ibex <- list.files(pattern = "^ibex.*\\.csv$", full.names = TRUE)
+
+list_ibex <- lapply(csv_ibex, read_csv)
+
+data_ibex<- do.call(rbind, list_ibex)
+
+data_ibex <- data_ibex %>% 
+  mutate(ultimo = replace(data_ibex$ultimo, TRUE, gsub(",", ".", data_ibex$ultimo)), 
+         ultimo = as.numeric(ultimo))
+```
+
+\
+
+-   **Top IBEX-35 companies**
+
+```{r warning=FALSE, message=FALSE, echo=TRUE, collapse=TRUE}
+
+top_companies_ibex <- data_ibex %>%
+  group_by(Nombre) %>%
+  summarise(average_price = mean(ultimo, na.rm = TRUE)) %>%
+  arrange(desc(average_price)) %>%
+  head(5) 
+
+colnames(top_companies_ibex) <- c("Company", "Last Price")
+knitr::kable(top_companies_ibex, caption = "Top 5 Companies in Belgium", align = "c")
+```
+
+\
+
+### 3. DAX
+
+-   Read scraped data stored in the generated CSV files:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE, collapse=TRUE}
+
+
+csv_dax <- list.files(pattern = "^dax.*\\.csv$", full.names = TRUE)
+list_dax<- lapply(csv_dax, read_csv)
+data_dax<- do.call(rbind, list_dax)
+
+
+top_companies_dax <- data_dax %>%
+  group_by(Nombre) %>%
+  summarise(average_price = mean(ultimo, na.rm = TRUE)) %>%
+  arrange(desc(average_price)) %>%
+  head(5)  
+
+colnames(top_companies_dax) <- c("Company", "Last Price")
+knitr::kable(top_companies_dax, caption = "Top 5 Companies in Germany", align = "c")
+
+```
+
+\
+
+### 4. CAC
+
+-   Read scraped data stored in the generated CSV files:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE, collapse=TRUE}
+
+csv_cac <- list.files(pattern = "^cac.*\\.csv$", full.names = TRUE)
+list_cac<- lapply(csv_cac, read_csv)
+data_cac<- do.call(rbind, list_cac)
+
+```
+
+\
+
+-   **Top CAC companies**
+
+```{r warning=FALSE, message=FALSE, echo=TRUE, collapse=TRUE}
+
+top_companies_cac <- data_cac %>%
+  group_by(Nombre) %>%
+  summarise(average_price = mean(ultimo, na.rm = TRUE)) %>%
+  arrange(desc(average_price)) %>%
+  head(5) 
+
+colnames(top_companies_cac) <- c("Company", "Last Price")
+knitr::kable(top_companies_cac, caption = "Top 5 Companies in France", align = "c")
+
+```
+
+\
+
+### 5. FTSE
+
+-   Read scraped data stored in the generated CSV files:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE, collapse=TRUE}
+
+
+csv_ftse <- list.files(pattern = "^ftse.*\\.csv$", full.names = TRUE)
+list_ftse<- lapply(csv_ftse, read_csv)
+data_ftse<- do.call(rbind, list_cac)
+
+```
+
+\
+
+-   **Top FTSE companies**
+
+```{r warning=FALSE, message=FALSE, echo=TRUE, collapse=TRUE}
+
+top_companies_ftse <- data_ftse %>%
+  group_by(Nombre) %>%
+  summarise(average_price = mean(ultimo, na.rm = TRUE)) %>%
+  arrange(desc(average_price)) %>%
+  head(5)  
+
+colnames(top_companies_ftse) <- c("Company", "Last Price")
+knitr::kable(top_companies_ftse, caption = "Top 5 Companies in United Kingdom", align = "c")
+
+```
+
+\
+
+### 6. ATX
+
+-   Read scraped data stored in the generated CSV files:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE, collapse=TRUE}
+
+
+
+csv_atx <- list.files(pattern = "^atx.*\\.csv$", full.names = TRUE)
+list_atx<- lapply(csv_atx, read_csv)
+data_atx<- do.call(rbind, list_atx)
+```
+
+\
+
+-   **Top ATX companies**
+
+```{r warning=FALSE, message=FALSE, echo=TRUE, collapse=TRUE}
+
+top_companies_atx <- data_atx %>%
+  group_by(Nombre) %>%
+  summarise(average_price = mean(ultimo, na.rm = TRUE)) %>%
+  arrange(desc(average_price)) %>%
+  head(5)  
+
+colnames(top_companies_atx) <- c("Company", "Last Price")
+knitr::kable(top_companies_atx, caption = "Top 5 Companies in Austria", align = "c")
+```
+
+### 7. BEL
+
+-   Read scraped data stored in the generated CSV files:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE, collapse=TRUE}
+
+
+
+csv_bel <- list.files(pattern = "^bel.*\\.csv$", full.names = TRUE)
+list_bel<- lapply(csv_bel, read_csv)
+data_bel<- do.call(rbind, list_bel)
+
+
+
+
+```
+
+-   Top BEL20 companies
+
+```{r warning=FALSE, message=FALSE, echo=TRUE, collapse=TRUE}
+
+top_companies_bel <- data_bel %>%  
+  group_by(Nombre) %>% 
+  summarise(average_price = mean(ultimo, na.rm = TRUE)) %>% 
+  arrange(desc(average_price)) %>% 
+  head(5)
+
+colnames(top_companies_bel) <- c("Company", "Last Price") 
+knitr::kable(top_companies_bel, caption = "Top 5 Companies in Belgium", align = "c")
+```
+
+#### **Top 5 companies for each European Stock Market**
+
+```{r}
+
+
+top_companies_ibex$Market <- "IBEX"
+top_companies_bel$Market <- "BEL"
+top_companies_cac$Market <- "CAC"
+top_companies_ftse$Market <- "FTSE"
+top_companies_atx$Market <- "ATX"
+
+
+all_top_companies <- bind_rows(
+  top_companies_ibex,
+  top_companies_bel,
+  top_companies_cac,
+  top_companies_ftse,
+  top_companies_atx
+)
+
+knitr::kable(all_top_companies, caption = "Top Companies in Each Stock Market", align = "c")
+
+```
